@@ -1,0 +1,76 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="container-fluid">
+    <div class="form-group row">
+        <label class="col-sm-2">Database :</label>
+        <div class="col-sm-10">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="rdoDatabase" value="E" checked/>
+                <label class="form-check-label">Export</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="rdoDatabase" value="I" />
+                <label class="form-check-label">Import</label>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-sm-2">CMID :</label>
+        <div class="col-sm-10">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" id="rdoBOSCH" value="BOSCH" name="rdoCMID" checked/>
+                <label class="form-check-label">BOSCH</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" id="rdoRBTY" value="RBTY" name="rdoCMID" />
+                <label class="form-check-label">RBTY</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" id="rdoROBOSCH" value="ROBOSCH" name="rdoCMID" />
+                <label class="form-check-label">ROBOSCH</label>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-sm-2 col-form-label">Sub Code :</label>
+        <div class="col-sm-3">
+            <input id="subCode" type="text" value="" class="form-control" maxlength="18" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-sm-2 col-form-label">Depart Date :</label>
+        <div class="col-sm-3">
+            <input type="date" class="form-control" id="decDateStart" />
+        </div>
+        <label class="col-form-label col-sm-1 text-center">To</label>
+        <div class="col-sm-3">
+            <input type="date" class="form-control" id="decDateStop" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <div class="offset-2 col-sm-2">
+            <button id="getDataToCSV" class="btn btn-primary">Search</button>
+        </div>
+    </div>
+    <div><p><strong>Note:</strong> type="date" is not supported in Internet Explorer 11 or prior Safari 14.1.</p></div>
+</div>
+
+@section scripts{ 
+    <script>
+        $().ready(function () {
+            $("#decDateStart").val(new Date().toISOString().slice(0, 10))
+            $("#decDateStop").val(new Date().toISOString().slice(0, 10))
+        })
+
+        $("#getDataToCSV").click(function () {
+            var database = $("input[name='rdoDatabase']:checked").val()
+            var cmid = $("input[name='rdoCMID']:checked").val()
+            var start_date = $("#decDateStart").val()
+            var stop_date = $("#decDateStop").val()
+            var subCode = $("#subCode").val()
+            window.location.href = '@Url.Action("getDataToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode
+        })
+    </script>
+}
