@@ -66,8 +66,8 @@ namespace BoschACDC.Models
         public string PreferenceCode2 { get; set; }
         public decimal TotalLineVATAmt { get; set; }
         public decimal VATRate { get; set; }
-        public string TotalLineExciseAmt { get; set; }
-        public string TotalLineAddlIndirectTaxAmt { get; set; }
+        public decimal TotalLineExciseAmt { get; set; }
+        public decimal TotalLineAddlIndirectTaxAmt { get; set; }
         public string ExportCountry { get; set; }
         public string ExportDate { get; set; }
         public string INCOTerms { get; set; }
