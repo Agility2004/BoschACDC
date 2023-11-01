@@ -4,7 +4,6 @@ using BoschACDC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -12,7 +11,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace BoschACDC.Controllers
 {
@@ -120,7 +118,6 @@ namespace BoschACDC.Controllers
                 var stream = new MemoryStream(byteArray);
                 return File(stream.ToArray(), "text/csv", $"{database}-{ cmid }-{ DateTime.Now.ToString("ddMMyy_HHmmss") }.csv");
             }
-            //return Content("No file name provided");
             return RedirectToAction("NoFileProvided");
         }
     }
