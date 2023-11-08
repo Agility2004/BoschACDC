@@ -1,40 +1,85 @@
-﻿@{
+﻿@model List<BoschModel>
+
+@{
     ViewData["Title"] = "Home Page";
 }
 
 <div class="container-fluid">
     <div class="form-group row">
         <label class="col-sm-2">Database :</label>
+        @{
+            var database = ViewBag.database;
+        }
         <div class="col-sm-10">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="rdoDatabase" value="E" checked/>
-                <label class="form-check-label">Export</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="rdoDatabase" value="I" />
-                <label class="form-check-label">Import</label>
-            </div>
+            @if (ViewBag.database is null)
+            {
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="rdoDatabase" value="E" checked />
+                    <label class="form-check-label">Export</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="rdoDatabase" value="I"/>
+                    <label class="form-check-label">Import</label>
+                </div>
+            }
+            else
+            {
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="rdoDatabase" value="E" checked="@(database == "E")" />
+                    <label class="form-check-label">Export</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="rdoDatabase" value="I" checked="@(database == "I")" />
+                    <label class="form-check-label">Import</label>
+                </div>
+            }
+
         </div>
     </div>
     <div class="form-group row">
+        @{
+            var cmid = ViewBag.cmid;
+        }
         <label class="col-sm-2">CMID :</label>
         <div class="col-sm-10">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" id="rdoALL" value="ALL" name="rdoCMID" checked />
-                <label class="form-check-label">All</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" id="rdoBOSCH" value="BOSCH" name="rdoCMID" />
-                <label class="form-check-label">BOSCH</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" id="rdoRBTY" value="RBTY" name="rdoCMID" />
-                <label class="form-check-label">RBTY</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" id="rdoROBOSCH" value="ROBOSCH" name="rdoCMID" />
-                <label class="form-check-label">ROBOSCH</label>
-            </div>
+            @if (cmid is null)
+            {
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoALL" value="ALL" name="rdoCMID" checked />
+                    <label class="form-check-label">All</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoBOSCH" value="BOSCH" name="rdoCMID" />
+                    <label class="form-check-label">BOSCH</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoRBTY" value="RBTY" name="rdoCMID" />
+                    <label class="form-check-label">RBTY</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoROBOSCH" value="ROBOSCH" name="rdoCMID" />
+                    <label class="form-check-label">ROBOSCH</label>
+                </div>
+            }
+            else
+            {
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoALL" value="ALL" name="rdoCMID" checked ="@(cmid == "ALL")" />
+                    <label class="form-check-label">All</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoBOSCH" value="BOSCH" name="rdoCMID" checked ="@(cmid == "BOSCH")" />
+                    <label class="form-check-label">BOSCH</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoRBTY" value="RBTY" name="rdoCMID" checked ="@(cmid == "RBTY")" />
+                    <label class="form-check-label">RBTY</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="rdoROBOSCH" value="ROBOSCH" name="rdoCMID" checked ="@(cmid == "ROBOSCH")" />
+                    <label class="form-check-label">ROBOSCH</label>
+                </div>
+            }
         </div>
     </div>
     <div class="form-group row">
@@ -59,14 +104,88 @@
         </div>
     </div>
     <div><p><strong>Note:</strong> type="date" is not supported in Internet Explorer 11 or prior Safari 14.1.</p></div>
+    <div class="form-group row view-import">
+        <div class="col-md">
+            <div class="d-flex justify-content-end">
+                <button id="ExportToCSV" class="btn btn-primary custom-button">Export</button>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row view-import">
+        <table id="tblBosch" class="table">
+            <thead class="thead-light">
+                <tr>
+                    <th scope="col">DeclarationNum</th>
+                    <th scope="col">LineNum</th>
+                    <th scope="col">ProductNum</th>
+                    <th scope="col">BusinessUnit</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null)
+                {
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.DeclarationNum</td>
+                            <td>@item.LineNum</td>
+                            <td>@item.ProductNum</td>
+                            <td>
+                                <input type="text" value="@item.BusinessUnit" id="txtBusinessUnit" />
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @section scripts{ 
     <script>
+        var validate = true;
+
         $().ready(function () {
-            $("#decDateStart").val(new Date().toISOString().slice(0, 10))
-            $("#decDateStop").val(new Date().toISOString().slice(0, 10))
+            var database = "@ViewBag.database";
+            var start_date = '@ViewBag.start_date';
+            var stop_date = '@ViewBag.stop_date';
+            var lock_control = "@ViewBag.lock_control";
+
+            if (start_date == "") {
+                $("#decDateStart").val(new Date().toISOString().slice(0, 10))
+            }
+            else {
+                $("#decDateStart").val(start_date)
+            }
+
+            if (stop_date == "") {
+                $("#decDateStop").val(new Date().toISOString().slice(0, 10))
+            }
+            else {
+                $("#decDateStop").val(stop_date)
+            }
+
+            if (database == "" || database == "E"){
+                $(".view-import").hide();
+            }
+            else {
+                $(".view-import").show();
+            }
+
+            if (lock_control == "Y") {
+                $("#getDataToCSV").prop("disabled", true);
+            }
         })
+
+        function ValidateInputbox() {
+            validate = true;
+            $("#tblBosch tbody tr").each(function () {
+                var row = $(this);
+                if (row.find("td:eq(3) input").val() == "") {
+                    validate = false;
+                }
+            })
+        }
 
         $("#getDataToCSV").click(function () {
             var database = $("input[name='rdoDatabase']:checked").val()
@@ -76,5 +195,62 @@
             var subCode = $("#subCode").val()
             window.location.href = '@Url.Action("getDataToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode
         })
+
+        $("#ExportToCSV").click(function () {
+            ValidateInputbox();
+            if (validate == true) {
+                var boschs = new Array();
+                $("#tblBosch tbody tr").each(function () {
+                    var row = $(this);
+                    var bosch = {};
+                    bosch.DeclarationNum = row.find("td").eq(0).html();
+                    bosch.LineNum = row.find("td").eq(1).html();
+                    bosch.ProductNum = row.find("td").eq(2).html();
+                    bosch.BusinessUnit = row.find("td:eq(3) input").val();
+                    boschs.push(bosch);
+                })
+
+                var database = $("input[name='rdoDatabase']:checked").val();
+                var cmid = $("input[name='rdoCMID']:checked").val();
+                var start_date = $("#decDateStart").val();
+                var stop_date = $("#decDateStop").val();
+                var subCode = $("#subCode").val();
+                var url = "@Url.Action("ExportToCSV","Home")";
+                window.location.href = '@Url.Action("ExportToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode + '&boschs=' + JSON.stringify(boschs)
+            }
+        })
+
+        $("input[type=radio][name=rdoDatabase]").on("change", function () {
+            $("#getDataToCSV").prop("disabled", false);
+            $("#ExportToCSV").prop("disabled", true);
+            $("#tblBosch").find("tbody tr").remove();
+            var database = $(this).val();
+            switch (database) {
+                case "E":
+                    $(".view-import").hide();
+                    break;
+                case "I":
+                    $(".view-import").show();
+                    break;
+            }
+        })
+
+        $("input[type=radio][name=rdoCMID]").on("change", function () {
+            $("#getDataToCSV").prop("disabled", false);
+            $("#ExportToCSV").prop("disabled", true);
+            $("#tblBosch").find("tbody tr").remove();
+        })
+
+        $("input[type=date]").on("change", function () {
+            $("#getDataToCSV").prop("disabled", false);
+            $("#ExportToCSV").prop("disabled", true);
+            $("#tblBosch").find("tbody tr").remove();
+        })
     </script>
 }
+
+<style>
+/*    .custom-button{
+        width:105px !important;
+    }*/
+</style>

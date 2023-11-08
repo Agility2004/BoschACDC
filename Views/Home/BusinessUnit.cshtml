@@ -1,0 +1,36 @@
+﻿@*@using System.Data;*@
+@*@model DataTable*@
+
+@model List<BoschModel>
+
+<h1>Update BusinessUnit</h1>
+
+<div class="container-fluid">
+    <label>Total Students:</label>  @ViewBag.TotalBosch
+    <table class="table">
+        <thead class="thead-light">
+            <tr>
+                <th scope="col">DeclarationNum</th>
+                <th scope="col">LineNum</th>
+                <th scope="col">ProductNum</th>
+                <th scope="col">BusinessUnit</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null)
+            {
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.DeclarationNum</td>
+                        <td>@item.LineNum</td>
+                        <td>@item.ProductNum</td>
+                        <td>
+                            <input type="text" value="@item.BusinessUnit" style="display:none"/>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

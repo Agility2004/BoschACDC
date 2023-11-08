@@ -4,6 +4,8 @@ using BoschACDC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -18,6 +20,7 @@ namespace BoschACDC.Controllers
     {
         private readonly BoschDbExportContext dbBoschExport;
         private readonly BoschDbImportContext dbBoschImport;
+
 
         public HomeController(BoschDbExportContext _dbBoschExport, BoschDbImportContext _dbBoschImport)
         {
@@ -103,14 +106,157 @@ namespace BoschACDC.Controllers
             
             if (dtBOSCH.Rows.Count > 0)
             {
+                if (database == "I")
+                {
+                    DataRow[] drRow = dtBOSCH.Select("BusinessUnit = ''");
+                    if (drRow.Length == 0)
+                    {
+                        StringBuilder strBuilder = new StringBuilder();
+                        var row = string.Empty;
+                        row = "DeclarationNum|LineNum|BrokerID|BrokerName|DeclarationType|CustomerID|CustomerName|ImporterID|ImporterName|ImporterReferenceNum|ConsigneeID|ConsigneeName|ImportCountry|ArrivalDate|ImportDate|ReleaseDate|DeliveryDate|ModeOfTransport|CarrierID|CarrierName|PortOfFiling|CustomsOffice|TotalDeclarationValue|CurrencyCode|TotalFees|ProductNum|ProductDesc|StyleNum|BusinessUnit|BusinessDivision|SupplierID|SupplierName|CountryOfOrigin|ManufacturerID|ManufacturerName|InvoiceNum|GrossWeight|NetWeight|WeightUOM|TxnQty|TxnQtyUOM|UnitValue|TotalLineValue|TotalDutiableLineValue|HsNum|HsNum2|WCOHsNum|RptQty|RptQtyUOM|AddlRptQty|AddlRptQtyUOM|AdValoremDutyRate|SpecificRate|LineDuty|AddlLineDuty|PreferenceCode1|PreferenceCode2|TotalLineVATAmt|VATRate|TotalLineExciseAmt|TotalLineAddlIndirectTaxAmt|ExportCountry|ExportDate|INCOTerms|PortOfLading|PortOfUnlading|MasterBillOfLading|HouseBillOfLading|RelatedPartyFlag|Fees";
+                        strBuilder.AppendLine(row);
+                        foreach (DataRow drBosch in dtBOSCH.Rows)
+                        {
+                            row = string.Empty;
+                            foreach (DataColumn dcColumn in dtBOSCH.Columns) row += $"{ drBosch[dcColumn].ToString() }{"|"}";
+                            strBuilder.AppendLine(row.Substring(0, row.Length - 1));
+                        }
+
+                        var byteArray = Encoding.ASCII.GetBytes(strBuilder.ToString());
+                        var stream = new MemoryStream(byteArray);
+                        return File(stream.ToArray(), "text/csv", $"{database}-{ cmid }-{ DateTime.Now.ToString("ddMMyy_HHmmss") }.csv");
+                    }
+                    else
+                    {
+                        DataTable dtBU = drRow.CopyToDataTable();
+
+                        List<BoschModel> lstBosch = new List<BoschModel>();
+                        foreach (DataRow drBU in dtBU.Rows)
+                        {
+                            BoschModel model = new BoschModel();
+                            model.DeclarationNum = drBU["DeclarationNum"].ToString();
+                            model.LineNum = Convert.ToInt32(drBU["LineNum"]);
+                            model.ProductNum = drBU["ProductNum"].ToString();
+                            model.BusinessUnit = drBU["BusinessUnit"].ToString();
+                            lstBosch.Add(model);
+                        }
+
+                        ViewBag.database = database;
+                        ViewBag.cmid = cmid;
+                        ViewBag.start_date = start_date;
+                        ViewBag.stop_date = stop_date;
+                        ViewBag.lock_control = "Y";
+                        return View("Index", lstBosch);
+                    }
+                }
+                else
+                {
+                    StringBuilder strBuilder = new StringBuilder();
+                    var row = string.Empty;
+                    row = "DeclarationNum|LineNum|BrokerID|BrokerName|DeclarationType|CustomerID|CustomerName|ImporterID|ImporterName|ImporterReferenceNum|ConsigneeID|ConsigneeName|ImportCountry|ArrivalDate|ImportDate|ReleaseDate|DeliveryDate|ModeOfTransport|CarrierID|CarrierName|PortOfFiling|CustomsOffice|TotalDeclarationValue|CurrencyCode|TotalFees|ProductNum|ProductDesc|StyleNum|BusinessUnit|BusinessDivision|SupplierID|SupplierName|CountryOfOrigin|ManufacturerID|ManufacturerName|InvoiceNum|GrossWeight|NetWeight|WeightUOM|TxnQty|TxnQtyUOM|UnitValue|TotalLineValue|TotalDutiableLineValue|HsNum|HsNum2|WCOHsNum|RptQty|RptQtyUOM|AddlRptQty|AddlRptQtyUOM|AdValoremDutyRate|SpecificRate|LineDuty|AddlLineDuty|PreferenceCode1|PreferenceCode2|TotalLineVATAmt|VATRate|TotalLineExciseAmt|TotalLineAddlIndirectTaxAmt|ExportCountry|ExportDate|INCOTerms|PortOfLading|PortOfUnlading|MasterBillOfLading|HouseBillOfLading|RelatedPartyFlag|Fees";
+                    strBuilder.AppendLine(row);
+                    foreach (DataRow drBosch in dtBOSCH.Rows)
+                    {
+                        row = string.Empty;
+                        foreach (DataColumn dcColumn in dtBOSCH.Columns) row += $"{ drBosch[dcColumn].ToString() }{"|"}";
+                        strBuilder.AppendLine(row.Substring(0, row.Length - 1));
+                    }
+
+                    var byteArray = Encoding.ASCII.GetBytes(strBuilder.ToString());
+                    var stream = new MemoryStream(byteArray);
+                    return File(stream.ToArray(), "text/csv", $"{database}-{ cmid }-{ DateTime.Now.ToString("ddMMyy_HHmmss") }.csv");
+                }
+            }
+            return RedirectToAction("NoFileProvided");
+        }
+
+        public List<BoschModel> UseJArrayParseInNewtonsoftJson(string boschs)
+        {
+            using StreamReader reader = new(boschs);
+            var json = reader.ReadToEnd();
+            var jarray = JArray.Parse(json);
+            List<BoschModel> teachers = new();
+            foreach (var item in jarray)
+            {
+                BoschModel teacher = item.ToObject<BoschModel>();
+                teachers.Add(teacher);
+            }
+            return teachers;
+        }
+
+        public ActionResult ExportToCSV(string database, string cmid, string start_date, string stop_date, string subCode, string boschs)
+        {
+            List<BoschModel> lstBoschs = new List<BoschModel>();
+            lstBoschs = JsonConvert.DeserializeObject<List<BoschModel>>(boschs);
+            DataTable dtBOSCH = new DataTable();
+            string[] arrCMID = new string[] { "BOSCH", "RBTY", "ROBOSCH" };
+            string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
+
+            if (cmid == "ALL")
+            {
+                foreach (var CMID in arrCMID)
+                {
+                    DataTable dtResult = new DataTable();
+                    List<SqlParameter> para = new List<SqlParameter>
+                    {
+                        new SqlParameter{ ParameterName = "@CMID", Value = CMID },
+                        new SqlParameter{ ParameterName = "@START_DATE", Value = start_date.Replace("-","") },
+                        new SqlParameter{ ParameterName = "@STOP_DATE", Value = stop_date.Replace("-","") },
+                        new SqlParameter{ ParameterName = "@SUB_CODE", Value = (string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode) }
+                    };
+
+                    if (database == "E")
+                    {
+                        var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
+                        dtResult = ListtoDataTableConverter.ToDataTable(data);
+                    }
+                    else
+                    {
+                        var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
+                        dtResult = ListtoDataTableConverter.ToDataTable(data);
+                    }
+
+                    dtBOSCH.Merge(dtResult);
+                }
+            }
+            else
+            {
+                List<SqlParameter> para = new List<SqlParameter>
+                {
+                    new SqlParameter{ ParameterName = "@CMID", Value = cmid },
+                    new SqlParameter{ ParameterName = "@START_DATE", Value = start_date.Replace("-","") },
+                    new SqlParameter{ ParameterName = "@STOP_DATE", Value = stop_date.Replace("-","") },
+                    new SqlParameter{ ParameterName = "@SUB_CODE", Value = (string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode) }
+                };
+
+                if (database == "E")
+                {
+                    var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
+                    dtBOSCH = ListtoDataTableConverter.ToDataTable(data);
+                }
+                else
+                {
+                    var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
+                    dtBOSCH = ListtoDataTableConverter.ToDataTable(data);
+                }
+            }
+
+            if (dtBOSCH.Rows.Count > 0)
+            {
+                foreach (var item in lstBoschs)
+                {
+                    DataRow drRow = dtBOSCH.Select("DeclarationNum = '" + item.DeclarationNum.ToString() + "' AND LineNum = " + item.LineNum).FirstOrDefault();
+                    if (drRow != null) drRow["BusinessUnit"] = item.BusinessUnit.ToString();
+                }
+
                 StringBuilder strBuilder = new StringBuilder();
                 var row = string.Empty;
                 row = "DeclarationNum|LineNum|BrokerID|BrokerName|DeclarationType|CustomerID|CustomerName|ImporterID|ImporterName|ImporterReferenceNum|ConsigneeID|ConsigneeName|ImportCountry|ArrivalDate|ImportDate|ReleaseDate|DeliveryDate|ModeOfTransport|CarrierID|CarrierName|PortOfFiling|CustomsOffice|TotalDeclarationValue|CurrencyCode|TotalFees|ProductNum|ProductDesc|StyleNum|BusinessUnit|BusinessDivision|SupplierID|SupplierName|CountryOfOrigin|ManufacturerID|ManufacturerName|InvoiceNum|GrossWeight|NetWeight|WeightUOM|TxnQty|TxnQtyUOM|UnitValue|TotalLineValue|TotalDutiableLineValue|HsNum|HsNum2|WCOHsNum|RptQty|RptQtyUOM|AddlRptQty|AddlRptQtyUOM|AdValoremDutyRate|SpecificRate|LineDuty|AddlLineDuty|PreferenceCode1|PreferenceCode2|TotalLineVATAmt|VATRate|TotalLineExciseAmt|TotalLineAddlIndirectTaxAmt|ExportCountry|ExportDate|INCOTerms|PortOfLading|PortOfUnlading|MasterBillOfLading|HouseBillOfLading|RelatedPartyFlag|Fees";
                 strBuilder.AppendLine(row);
-                foreach (DataRow drRow in dtBOSCH.Rows)
+                foreach (DataRow drBosch in dtBOSCH.Rows)
                 {
                     row = string.Empty;
-                    foreach (DataColumn dcColumn in dtBOSCH.Columns) row += $"{ drRow[dcColumn].ToString() }{"|"}";
+                    foreach (DataColumn dcColumn in dtBOSCH.Columns) row += $"{ drBosch[dcColumn].ToString() }{"|"}";
                     strBuilder.AppendLine(row.Substring(0, row.Length - 1));
                 }
 
@@ -118,6 +264,7 @@ namespace BoschACDC.Controllers
                 var stream = new MemoryStream(byteArray);
                 return File(stream.ToArray(), "text/csv", $"{database}-{ cmid }-{ DateTime.Now.ToString("ddMMyy_HHmmss") }.csv");
             }
+
             return RedirectToAction("NoFileProvided");
         }
     }
