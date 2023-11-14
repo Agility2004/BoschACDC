@@ -1,6 +1,7 @@
 ﻿using BoschACDC.Class;
 using BoschACDC.Data;
 using BoschACDC.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,12 @@ namespace BoschACDC.Controllers
             dbBoschImport = _dbBoschImport;
         }
 
+        public IActionResult UpdateBU()
+        {
+            return View();
+        }
+
+        //[AllowAnonymous]
         public IActionResult Index()
         {
             return View();
@@ -49,6 +56,7 @@ namespace BoschACDC.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
+        //[AllowAnonymous]
         public ActionResult getDataToCSV(string database, string cmid, string start_date, string stop_date, string subCode)
         {
             DataTable dtBOSCH = new DataTable();
@@ -170,24 +178,47 @@ namespace BoschACDC.Controllers
             return RedirectToAction("NoFileProvided");
         }
 
-        public List<BoschModel> UseJArrayParseInNewtonsoftJson(string boschs)
+        //public List<BoschModel> UseJArrayParseInNewtonsoftJson(string boschs)
+        //{
+        //    using StreamReader reader = new(boschs);
+        //    var json = reader.ReadToEnd();
+        //    var jarray = JArray.Parse(json);
+        //    List<BoschModel> teachers = new();
+        //    foreach (var item in jarray)
+        //    {
+        //        BoschModel teacher = item.ToObject<BoschModel>();
+        //        teachers.Add(teacher);
+        //    }
+        //    return teachers;
+        //}
+
+        [HttpPost]
+        public JsonResult UpdateBU(List<string> lstBU)
         {
-            using StreamReader reader = new(boschs);
-            var json = reader.ReadToEnd();
-            var jarray = JArray.Parse(json);
-            List<BoschModel> teachers = new();
-            foreach (var item in jarray)
+            string sql = "EXEC USP_UPDATE_DATA_BOSCH_ADCD @PRODUCT_CODE, @BUSINESS_UNIT";
+
+            foreach (var item in lstBU)
             {
-                BoschModel teacher = item.ToObject<BoschModel>();
-                teachers.Add(teacher);
+                string[] arrBU = item.Split(",");
+                List<SqlParameter> para = new List<SqlParameter>
+                {
+                    new SqlParameter{ParameterName="@PRODUCT_CODE", Value = arrBU[0].ToString().Trim()},
+                    new SqlParameter{ ParameterName="@BUSINESS_UNIT", Value = arrBU[1].ToString().Trim()}
+                };
+                dbBoschImport.Database.ExecuteSqlRaw(sql, para);
             }
-            return teachers;
+
+            return Json("Ok");
         }
 
+        //[AllowAnonymous]
+        //[RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
         public ActionResult ExportToCSV(string database, string cmid, string start_date, string stop_date, string subCode, string boschs)
         {
-            List<BoschModel> lstBoschs = new List<BoschModel>();
-            lstBoschs = JsonConvert.DeserializeObject<List<BoschModel>>(boschs);
+            //List<BoschModel> lstBoschs = new List<BoschModel>();
+            //lstBoschs = JsonConvert.DeserializeObject<List<BoschModel>>(boschs);
+            //List<string> lstBoschs = boschs.Split(',').ToList();
+            List<string> lstBoschs = JsonConvert.DeserializeObject<List<string>>(boschs);
             DataTable dtBOSCH = new DataTable();
             string[] arrCMID = new string[] { "BOSCH", "RBTY", "ROBOSCH" };
             string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
@@ -245,8 +276,10 @@ namespace BoschACDC.Controllers
             {
                 foreach (var item in lstBoschs)
                 {
-                    DataRow drRow = dtBOSCH.Select("DeclarationNum = '" + item.DeclarationNum.ToString() + "' AND LineNum = " + item.LineNum).FirstOrDefault();
-                    if (drRow != null) drRow["BusinessUnit"] = item.BusinessUnit.ToString();
+                    string[] data = item.Split('|');
+
+                    IEnumerable<DataRow> rows = dtBOSCH.Rows.Cast<DataRow>().Where(r => r["ProductNum"].ToString() == data[0]);
+                    rows.ToList().ForEach(r => r.SetField("BusinessUnit", data[1]));
                 }
 
                 StringBuilder strBuilder = new StringBuilder();

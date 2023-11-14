@@ -146,6 +146,24 @@
         var validate = true;
 
         $().ready(function () {
+            if (location.href.includes('?')) {
+                history.pushState({}, null, location.href.split('?')[0]);
+            }
+
+            toastr.options = {
+                "positionClass": "toast-bottom-right",
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "5000",
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut"
+            }
+
+
+
             var database = "@ViewBag.database";
             var start_date = '@ViewBag.start_date';
             var stop_date = '@ViewBag.stop_date';
@@ -193,7 +211,18 @@
             var start_date = $("#decDateStart").val()
             var stop_date = $("#decDateStop").val()
             var subCode = $("#subCode").val()
-            window.location.href = '@Url.Action("getDataToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode
+
+            $.ajax({
+                type: "POST",
+                success: function (res) {
+                    window.location.href = '@Url.Action("getDataToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode
+                    toastr.success("Search completed!!!");
+                },
+                error: function () {
+                    toastr.error("System Error!!!");
+                }
+            });
+            //window.location.href = '@Url.Action("getDataToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode
         })
 
         $("#ExportToCSV").click(function () {
@@ -203,11 +232,14 @@
                 $("#tblBosch tbody tr").each(function () {
                     var row = $(this);
                     var bosch = {};
-                    bosch.DeclarationNum = row.find("td").eq(0).html();
-                    bosch.LineNum = row.find("td").eq(1).html();
                     bosch.ProductNum = row.find("td").eq(2).html();
-                    bosch.BusinessUnit = row.find("td:eq(3) input").val();
-                    boschs.push(bosch);
+                    if (jQuery.inArray(row.find("td").eq(2).html() + '|' + row.find("td:eq(3) input").val(), boschs) != -1) {
+                        //Nothing
+                    }
+                    else {
+
+                        boschs.push(row.find("td").eq(2).html() + '|' + row.find("td:eq(3) input").val());
+                    }
                 })
 
                 var database = $("input[name='rdoDatabase']:checked").val();
@@ -215,8 +247,17 @@
                 var start_date = $("#decDateStart").val();
                 var stop_date = $("#decDateStop").val();
                 var subCode = $("#subCode").val();
-                var url = "@Url.Action("ExportToCSV","Home")";
-                window.location.href = '@Url.Action("ExportToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode + '&boschs=' + JSON.stringify(boschs)
+
+                $.ajax({
+                    type: "GET",
+                    success: function (res) {
+                        window.location.href = '@Url.Action("ExportToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode + '&boschs=' + JSON.stringify(boschs)
+                        toastr.success("Export completed!!!");
+                    },
+                    error: function () {
+                        toastr.error("System Error!!!");
+                    }
+                });
             }
         })
 
