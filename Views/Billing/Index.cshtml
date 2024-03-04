@@ -1,0 +1,40 @@
+﻿@{
+    ViewData["Title"] = "Billing Page";
+}
+
+<div class="container-fluid">
+    @using (Html.BeginForm("ExportToExcel", "Billing", FormMethod.Get))
+    {
+        <div class="form-group row">
+            <label class="col-sm-2 col-form-label">Billing Date :</label>
+            <div class="col-sm-3">
+                <input type="date" class="form-control" id="decDateStart" name="startDate" />
+            </div>
+            <label class="col-form-label col-sm-1 text-center">To</label>
+            <div class="col-sm-3">
+                <input type="date" class="form-control" id="decDateStop" name="stopDate" />
+            </div>
+        </div>
+        <div class="form-group row">
+            <div class="offset-8">
+                <button class="btn btn-primary" type="submit">Export</button>
+            </div>
+        </div>
+
+        <div><p><strong>Note:</strong> type="date" is not supported in Internet Explorer 11 or prior Safari 14.1.</p></div>
+    }
+</div>
+
+@section scripts{ 
+    <script>
+        $().ready(function () {
+            $("#decDateStart").val(new Date().toISOString().slice(0, 10))
+            $("#decDateStop").val(new Date().toISOString().slice(0, 10))
+
+        });
+
+        $('.navbar-nav .nav-link').click(function () {
+            console.log("Action");
+        })
+    </script>
+}
