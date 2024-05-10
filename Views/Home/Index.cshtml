@@ -227,18 +227,25 @@
             ValidateInputbox();
             if (validate == true) {
                 var boschs = new Array();
+                var keyValueObject = {};
+
                 $("#tblBosch tbody tr").each(function () {
                     var row = $(this);
                     var bosch = {};
+
+                    
+
                     bosch.ProductNum = row.find("td").eq(2).html();
-                    if (jQuery.inArray(row.find("td").eq(2).html() + '|' + row.find("td:eq(3) input").val(), boschs) != -1) {
+                    if (jQuery.inArray(row.find("td").eq(2).text() + '|' + row.find("td:eq(3) input").val(), boschs) != -1) {
                         //Nothing
                     }
                     else {
-
-                        boschs.push(row.find("td").eq(2).html() + '|' + row.find("td:eq(3) input").val());
+                        boschs.push(row.find("td").eq(2).text() + '|' + row.find("td:eq(3) input").val());
+                        keyValueObject[row.find("td").eq(2).text()] = row.find("td:eq(3) input").val();
                     }
                 })
+
+                console.log(keyValueObject);
 
                 var database = $("input[name='rdoDatabase']:checked").val();
                 var cmid = $("input[name='rdoCMID']:checked").val();
@@ -246,10 +253,12 @@
                 var stop_date = $("#decDateStop").val();
                 var subCode = $("#subCode").val();
 
+                let encodedParam = encodeURIComponent(boschs);
+
                 $.ajax({
                     type: "GET",
                     success: function (res) {
-                        window.location.href = '@Url.Action("ExportToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode + '&boschs=' + JSON.stringify(boschs)
+                        window.location.href = '@Url.Action("ExportToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode + '&boschs=' + JSON.stringify(encodedParam)
                         toastr.success("Export completed!!!");
                     },
                     error: function () {

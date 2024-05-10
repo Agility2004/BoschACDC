@@ -32,7 +32,6 @@ namespace BoschACDC.Controllers
             return View();
         }
 
-        //[AllowAnonymous]
         public IActionResult Index()
         {
             return View();
@@ -54,7 +53,6 @@ namespace BoschACDC.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
-        //[AllowAnonymous]
         public ActionResult getDataToCSV(string database, string cmid, string start_date, string stop_date, string subCode)
         {
             DataTable dtBOSCH = new DataTable();
@@ -143,7 +141,7 @@ namespace BoschACDC.Controllers
                             model.DeclarationNum = drBU["DeclarationNum"].ToString();
                             model.LineNum = Convert.ToInt32(drBU["LineNum"]);
                             model.ProductNum = drBU["ProductNum"].ToString();
-                            model.BusinessUnit = drBU["BusinessUnit"].ToString();
+                            model.BusinessUnit = (string.IsNullOrEmpty(drBU["BusinessUnit"].ToString())? "N/A" : drBU["BusinessUnit"].ToString());
                             lstBosch.Add(model);
                         }
 
@@ -176,20 +174,6 @@ namespace BoschACDC.Controllers
             return RedirectToAction("NoFileProvided");
         }
 
-        //public List<BoschModel> UseJArrayParseInNewtonsoftJson(string boschs)
-        //{
-        //    using StreamReader reader = new(boschs);
-        //    var json = reader.ReadToEnd();
-        //    var jarray = JArray.Parse(json);
-        //    List<BoschModel> teachers = new();
-        //    foreach (var item in jarray)
-        //    {
-        //        BoschModel teacher = item.ToObject<BoschModel>();
-        //        teachers.Add(teacher);
-        //    }
-        //    return teachers;
-        //}
-
         [HttpPost]
         public JsonResult UpdateBU(List<string> lstBU)
         {
@@ -209,14 +193,30 @@ namespace BoschACDC.Controllers
             return Json("Ok");
         }
 
-        //[AllowAnonymous]
-        //[RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
         public ActionResult ExportToCSV(string database, string cmid, string start_date, string stop_date, string subCode, string boschs)
         {
-            //List<BoschModel> lstBoschs = new List<BoschModel>();
-            //lstBoschs = JsonConvert.DeserializeObject<List<BoschModel>>(boschs);
-            //List<string> lstBoschs = boschs.Split(',').ToList();
-            List<string> lstBoschs = JsonConvert.DeserializeObject<List<string>>(boschs);
+
+            string resultString = JsonConvert.DeserializeObject<string>(boschs);
+            List<string> lstBoschs = new List<string>();
+            string[] arrBoschs = resultString.Split(',');
+
+            StringBuilder strTemp = new StringBuilder();
+
+            foreach (var bosch in arrBoschs)
+            {
+                strTemp.Append(bosch);
+
+                if (strTemp.ToString().Contains("N/A"))
+                {
+                    lstBoschs.Add(strTemp.ToString());
+                    strTemp.Clear();
+                }
+                else
+                {
+                    strTemp.Append(",");
+                }  
+            }
+
             DataTable dtBOSCH = new DataTable();
             string[] arrCMID = new string[] { "BOSCH", "RBTY", "ROBOSCH" };
             string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
