@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 
@@ -19,6 +20,51 @@ namespace BoschACDC.Controllers
     {
         private readonly BoschDbExportContext dbBoschExport;
         private readonly BoschDbImportContext dbBoschImport;
+
+        #region "All Functions"
+        private (DataTable, DataTable) SplitDataTableByDeliveryDate(DataTable dtBOSCH)
+        {
+            DataRow[] dr0409 = dtBOSCH.Select("DeliveryDate not is null");
+            DataRow[] drNon0409 = dtBOSCH.Select("DeliveryDate is null");
+            DataTable dt0409 = dr0409.CopyToDataTable();
+            DataTable dtNon0409 = drNon0409.CopyToDataTable();
+
+            return (dt0409, dtNon0409);
+        }
+
+        private MemoryStream ConvertDataTableToMemoryStream(DataTable dataTable)
+        {
+            var csvContent = BuildCSVContent(dataTable);
+            var byteArray = Encoding.ASCII.GetBytes(csvContent);
+            return new MemoryStream(byteArray);
+        }
+
+        private void AddEntryToArchive(ZipArchive archive, MemoryStream memoryStream, string database, string cmid, string suffix)
+        {
+            string strSuffix = (suffix == string.Empty ? "" : suffix);
+            string fileName = $"{database}-{cmid}-{DateTime.Now:ddMMyy_HHmmss}{strSuffix}.csv";
+            var entry = archive.CreateEntry(fileName);
+            using (var entryStream = entry.Open())
+            {
+                memoryStream.CopyTo(entryStream);
+            }
+        }
+
+        private MemoryStream CreateZipArchive(MemoryStream memoryStream0409, MemoryStream memoryStreamNon0409, string database, string cmid)
+        {
+            var zipStream = new MemoryStream();
+            using (ZipArchive archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+            {
+                AddEntryToArchive(archive, memoryStream0409, database, cmid, "");
+                AddEntryToArchive(archive, memoryStreamNon0409, database, cmid, "--Non0409");
+            }
+            memoryStream0409.Seek(0, SeekOrigin.Begin);
+            memoryStreamNon0409.Seek(0, SeekOrigin.Begin);
+            zipStream.Seek(0, SeekOrigin.Begin);
+
+            return zipStream;
+        }
+        #endregion
 
 
         public HomeController(BoschDbExportContext _dbBoschExport, BoschDbImportContext _dbBoschImport)
@@ -53,125 +99,49 @@ namespace BoschACDC.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
-        public ActionResult getDataToCSV(string database, string cmid, string start_date, string stop_date, string subCode)
+        [HttpPost]
+        public ActionResult GetDataBusinessUnit(string database, string cmid, string startDate, string stopDate, string subCode)
         {
-            DataTable dtBOSCH = new DataTable();
-            string[] arrCMID = new string[] { "BOSCH", "RBTY", "ROBOSCH" };
-            string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
+            string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH" } : arrCMID = new string[] { cmid });
+            DataTable dtBOSCH = GetBoschData(database, arrCMID, startDate, stopDate, subCode, "");
 
-            if (cmid == "ALL")
+            if (dtBOSCH.Rows.Count == 0) return Json(new { success = true, message = "Not found data" });
+
+            if (database == "I")
             {
-                foreach (var CMID in arrCMID)
+                DataRow[] drRow = dtBOSCH.Select("BusinessUnit = ''");
+                if (drRow.Length == 0)
                 {
-                    DataTable dtResult = new DataTable();
-                    List<SqlParameter> para = new List<SqlParameter>
-                    {
-                        new SqlParameter{ ParameterName = "@CMID", Value = CMID },
-                        new SqlParameter{ ParameterName = "@START_DATE", Value = start_date.Replace("-","") },
-                        new SqlParameter{ ParameterName = "@STOP_DATE", Value = stop_date.Replace("-","") },
-                        new SqlParameter{ ParameterName = "@SUB_CODE", Value = (string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode) }
-                    };
-
-                    if (database == "E")
-                    {
-                        var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                        dtResult = ListtoDataTableConverter.ToDataTable(data);
-                    }
-                    else
-                    {
-                        var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                        dtResult = ListtoDataTableConverter.ToDataTable(data);
-                    }
-
-                    dtBOSCH.Merge(dtResult);
+                    return Json(new { success = true, message = "Successfully" });
+                }
+                else
+                {
+                    DataTable dtBU = drRow.CopyToDataTable();
+                    List<BoschModel> lstBosch = BuildBoschModels(dtBU);
+                    return Json(new { success = true, message = "Successfully", lstBosch = lstBosch });
                 }
             }
             else
             {
-                List<SqlParameter> para = new List<SqlParameter>
-                {
-                    new SqlParameter{ ParameterName = "@CMID", Value = cmid },
-                    new SqlParameter{ ParameterName = "@START_DATE", Value = start_date.Replace("-","") },
-                    new SqlParameter{ ParameterName = "@STOP_DATE", Value = stop_date.Replace("-","") },
-                    new SqlParameter{ ParameterName = "@SUB_CODE", Value = (string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode) }
-                };
-
-                if (database == "E")
-                {
-                    var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                    dtBOSCH = ListtoDataTableConverter.ToDataTable(data);
-                }
-                else
-                {
-                    var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                    dtBOSCH = ListtoDataTableConverter.ToDataTable(data);
-                }
+                return Json(new { success = true, message = "Successfully" });
             }
-            
-            if (dtBOSCH.Rows.Count > 0)
+        }
+
+        private List<BoschModel> BuildBoschModels(DataTable dataTable)
+        {
+            List<BoschModel> boschModels = new List<BoschModel>();
+            foreach (DataRow row in dataTable.Rows)
             {
-                if (database == "I")
+                BoschModel model = new BoschModel
                 {
-                    DataRow[] drRow = dtBOSCH.Select("BusinessUnit = ''");
-                    if (drRow.Length == 0)
-                    {
-                        StringBuilder strBuilder = new StringBuilder();
-                        var row = string.Empty;
-                        row = "DeclarationNum|LineNum|BrokerID|BrokerName|DeclarationType|CustomerID|CustomerName|ImporterID|ImporterName|ImporterReferenceNum|ConsigneeID|ConsigneeName|ImportCountry|ArrivalDate|ImportDate|ReleaseDate|DeliveryDate|ModeOfTransport|CarrierID|CarrierName|PortOfFiling|CustomsOffice|TotalDeclarationValue|CurrencyCode|TotalFees|ProductNum|ProductDesc|StyleNum|BusinessUnit|BusinessDivision|SupplierID|SupplierName|CountryOfOrigin|ManufacturerID|ManufacturerName|InvoiceNum|GrossWeight|NetWeight|WeightUOM|TxnQty|TxnQtyUOM|UnitValue|TotalLineValue|TotalDutiableLineValue|HsNum|HsNum2|WCOHsNum|RptQty|RptQtyUOM|AddlRptQty|AddlRptQtyUOM|AdValoremDutyRate|SpecificRate|LineDuty|AddlLineDuty|PreferenceCode1|PreferenceCode2|TotalLineVATAmt|VATRate|TotalLineExciseAmt|TotalLineAddlIndirectTaxAmt|ExportCountry|ExportDate|INCOTerms|PortOfLading|PortOfUnlading|MasterBillOfLading|HouseBillOfLading|RelatedPartyFlag|Fees";
-                        strBuilder.AppendLine(row);
-                        foreach (DataRow drBosch in dtBOSCH.Rows)
-                        {
-                            row = string.Empty;
-                            foreach (DataColumn dcColumn in dtBOSCH.Columns) row += $"{ drBosch[dcColumn].ToString() }{"|"}";
-                            strBuilder.AppendLine(row.Substring(0, row.Length - 1));
-                        }
-
-                        var byteArray = Encoding.ASCII.GetBytes(strBuilder.ToString());
-                        var stream = new MemoryStream(byteArray);
-                        return File(stream.ToArray(), "text/csv", $"{database}-{ cmid }-{ DateTime.Now.ToString("ddMMyy_HHmmss") }.csv");
-                    }
-                    else
-                    {
-                        DataTable dtBU = drRow.CopyToDataTable();
-
-                        List<BoschModel> lstBosch = new List<BoschModel>();
-                        foreach (DataRow drBU in dtBU.Rows)
-                        {
-                            BoschModel model = new BoschModel();
-                            model.DeclarationNum = drBU["DeclarationNum"].ToString();
-                            model.LineNum = Convert.ToInt32(drBU["LineNum"]);
-                            model.ProductNum = drBU["ProductNum"].ToString();
-                            model.BusinessUnit = (string.IsNullOrEmpty(drBU["BusinessUnit"].ToString())? "N/A" : drBU["BusinessUnit"].ToString());
-                            lstBosch.Add(model);
-                        }
-
-                        ViewBag.database = database;
-                        ViewBag.cmid = cmid;
-                        ViewBag.start_date = start_date;
-                        ViewBag.stop_date = stop_date;
-                        ViewBag.lock_control = "Y";
-                        return View("Index", lstBosch);
-                    }
-                }
-                else
-                {
-                    StringBuilder strBuilder = new StringBuilder();
-                    var row = string.Empty;
-                    row = "DeclarationNum|LineNum|BrokerID|BrokerName|DeclarationType|CustomerID|CustomerName|ImporterID|ImporterName|ImporterReferenceNum|ConsigneeID|ConsigneeName|ImportCountry|ArrivalDate|ImportDate|ReleaseDate|DeliveryDate|ModeOfTransport|CarrierID|CarrierName|PortOfFiling|CustomsOffice|TotalDeclarationValue|CurrencyCode|TotalFees|ProductNum|ProductDesc|StyleNum|BusinessUnit|BusinessDivision|SupplierID|SupplierName|CountryOfOrigin|ManufacturerID|ManufacturerName|InvoiceNum|GrossWeight|NetWeight|WeightUOM|TxnQty|TxnQtyUOM|UnitValue|TotalLineValue|TotalDutiableLineValue|HsNum|HsNum2|WCOHsNum|RptQty|RptQtyUOM|AddlRptQty|AddlRptQtyUOM|AdValoremDutyRate|SpecificRate|LineDuty|AddlLineDuty|PreferenceCode1|PreferenceCode2|TotalLineVATAmt|VATRate|TotalLineExciseAmt|TotalLineAddlIndirectTaxAmt|ExportCountry|ExportDate|INCOTerms|PortOfLading|PortOfUnlading|MasterBillOfLading|HouseBillOfLading|RelatedPartyFlag|Fees";
-                    strBuilder.AppendLine(row);
-                    foreach (DataRow drBosch in dtBOSCH.Rows)
-                    {
-                        row = string.Empty;
-                        foreach (DataColumn dcColumn in dtBOSCH.Columns) row += $"{ drBosch[dcColumn].ToString() }{"|"}";
-                        strBuilder.AppendLine(row.Substring(0, row.Length - 1));
-                    }
-
-                    var byteArray = Encoding.ASCII.GetBytes(strBuilder.ToString());
-                    var stream = new MemoryStream(byteArray);
-                    return File(stream.ToArray(), "text/csv", $"{database}-{ cmid }-{ DateTime.Now.ToString("ddMMyy_HHmmss") }.csv");
-                }
+                    DeclarationNum = row["DeclarationNum"].ToString(),
+                    LineNum = Convert.ToInt32(row["LineNum"]),
+                    ProductNum = row["ProductNum"].ToString(),
+                    BusinessUnit = string.IsNullOrEmpty(row["BusinessUnit"].ToString()) ? "N/A" : row["BusinessUnit"].ToString()
+                };
+                boschModels.Add(model);
             }
-            return RedirectToAction("NoFileProvided");
+            return boschModels;
         }
 
         [HttpPost]
@@ -181,7 +151,7 @@ namespace BoschACDC.Controllers
 
             foreach (var item in lstBU)
             {
-                string[] arrBU = item.Split(",");
+                string[] arrBU = item.Split("|");
                 List<SqlParameter> para = new List<SqlParameter>
                 {
                     new SqlParameter{ParameterName="@PRODUCT_CODE", Value = arrBU[0].ToString().Trim()},
@@ -193,110 +163,150 @@ namespace BoschACDC.Controllers
             return Json("Ok");
         }
 
-        public ActionResult ExportToCSV(string database, string cmid, string start_date, string stop_date, string subCode, string boschs)
+        [HttpGet]
+        public IActionResult ExportToCSV(string database, string cmid, string startDate, string stopDate, string subCode, string boschs, bool excludeStatus, string decNo)
         {
-
-            string resultString = JsonConvert.DeserializeObject<string>(boschs);
-            List<string> lstBoschs = new List<string>();
-            string[] arrBoschs = resultString.Split(',');
-
-            StringBuilder strTemp = new StringBuilder();
-
-            foreach (var bosch in arrBoschs)
+            try
             {
-                strTemp.Append(bosch);
+                var decodedBoschs = Uri.UnescapeDataString(boschs);
+                var lstBoschs = JsonConvert.DeserializeObject<List<string>>(decodedBoschs);
 
-                if (strTemp.ToString().Contains("N/A"))
-                {
-                    lstBoschs.Add(strTemp.ToString());
-                    strTemp.Clear();
-                }
-                else
-                {
-                    strTemp.Append(",");
-                }  
-            }
+                string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH" } : arrCMID = new string[] { cmid });
+                string exclude = (excludeStatus ? "Y" : "N");
 
-            DataTable dtBOSCH = new DataTable();
-            string[] arrCMID = new string[] { "BOSCH", "RBTY", "ROBOSCH" };
-            string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
+                DataTable dtBOSCH = GetBoschData(database, arrCMID, startDate, stopDate, subCode, decNo);
 
-            if (cmid == "ALL")
-            {
-                foreach (var CMID in arrCMID)
-                {
-                    DataTable dtResult = new DataTable();
-                    List<SqlParameter> para = new List<SqlParameter>
-                    {
-                        new SqlParameter{ ParameterName = "@CMID", Value = CMID },
-                        new SqlParameter{ ParameterName = "@START_DATE", Value = start_date.Replace("-","") },
-                        new SqlParameter{ ParameterName = "@STOP_DATE", Value = stop_date.Replace("-","") },
-                        new SqlParameter{ ParameterName = "@SUB_CODE", Value = (string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode) }
-                    };
+                if (dtBOSCH.Rows.Count == 0) return RedirectToAction("NoFileProvided");
 
-                    if (database == "E")
-                    {
-                        var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                        dtResult = ListtoDataTableConverter.ToDataTable(data);
-                    }
-                    else
-                    {
-                        var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                        dtResult = ListtoDataTableConverter.ToDataTable(data);
-                    }
-
-                    dtBOSCH.Merge(dtResult);
-                }
-            }
-            else
-            {
-                List<SqlParameter> para = new List<SqlParameter>
-                {
-                    new SqlParameter{ ParameterName = "@CMID", Value = cmid },
-                    new SqlParameter{ ParameterName = "@START_DATE", Value = start_date.Replace("-","") },
-                    new SqlParameter{ ParameterName = "@STOP_DATE", Value = stop_date.Replace("-","") },
-                    new SqlParameter{ ParameterName = "@SUB_CODE", Value = (string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode) }
-                };
-
-                if (database == "E")
-                {
-                    var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                    dtBOSCH = ListtoDataTableConverter.ToDataTable(data);
-                }
-                else
-                {
-                    var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, para.ToArray()).ToList();
-                    dtBOSCH = ListtoDataTableConverter.ToDataTable(data);
-                }
-            }
-
-            if (dtBOSCH.Rows.Count > 0)
-            {
                 foreach (var item in lstBoschs)
                 {
                     string[] data = item.Split('|');
+                    string productNum = data[0];
+                    string businessUnit = data[1];
 
-                    IEnumerable<DataRow> rows = dtBOSCH.Rows.Cast<DataRow>().Where(r => r["ProductNum"].ToString() == data[0]);
-                    rows.ToList().ForEach(r => r.SetField("BusinessUnit", data[1]));
+                    foreach (DataRow row in dtBOSCH.Rows)
+                    {
+                        if (row["ProductNum"].ToString() == productNum) row["BusinessUnit"] = businessUnit;
+                    }
                 }
 
-                StringBuilder strBuilder = new StringBuilder();
-                var row = string.Empty;
-                row = "DeclarationNum|LineNum|BrokerID|BrokerName|DeclarationType|CustomerID|CustomerName|ImporterID|ImporterName|ImporterReferenceNum|ConsigneeID|ConsigneeName|ImportCountry|ArrivalDate|ImportDate|ReleaseDate|DeliveryDate|ModeOfTransport|CarrierID|CarrierName|PortOfFiling|CustomsOffice|TotalDeclarationValue|CurrencyCode|TotalFees|ProductNum|ProductDesc|StyleNum|BusinessUnit|BusinessDivision|SupplierID|SupplierName|CountryOfOrigin|ManufacturerID|ManufacturerName|InvoiceNum|GrossWeight|NetWeight|WeightUOM|TxnQty|TxnQtyUOM|UnitValue|TotalLineValue|TotalDutiableLineValue|HsNum|HsNum2|WCOHsNum|RptQty|RptQtyUOM|AddlRptQty|AddlRptQtyUOM|AdValoremDutyRate|SpecificRate|LineDuty|AddlLineDuty|PreferenceCode1|PreferenceCode2|TotalLineVATAmt|VATRate|TotalLineExciseAmt|TotalLineAddlIndirectTaxAmt|ExportCountry|ExportDate|INCOTerms|PortOfLading|PortOfUnlading|MasterBillOfLading|HouseBillOfLading|RelatedPartyFlag|Fees";
-                strBuilder.AppendLine(row);
-                foreach (DataRow drBosch in dtBOSCH.Rows)
+                if (exclude == "Y")
                 {
-                    row = string.Empty;
-                    foreach (DataColumn dcColumn in dtBOSCH.Columns) row += $"{ drBosch[dcColumn].ToString() }{"|"}";
-                    strBuilder.AppendLine(row.Substring(0, row.Length - 1));
+                    var (dt0409, dtNon0409) = SplitDataTableByDeliveryDate(dtBOSCH);
+                    var memoryStream0409 = ConvertDataTableToMemoryStream(dt0409);
+                    var memoryStreamNon0409 = ConvertDataTableToMemoryStream(dtNon0409);
+                    var zipStream = CreateZipArchive(memoryStream0409, memoryStreamNon0409, database, cmid);
+
+                    return File(zipStream.ToArray(), "application/zip", "files.zip");
+                }
+                else
+                {
+                    var csvContent = BuildCSVContent(dtBOSCH);
+                    var byteArray = Encoding.ASCII.GetBytes(csvContent);
+                    var memoryStream = new MemoryStream(byteArray);
+                    string fileName = $"{database}-{cmid}-{DateTime.Now:ddMMyy_HHmmss}.csv";
+                    return File(memoryStream.ToArray(), "text/csv", fileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                return RedirectToAction("Index");
+            }
+        }
+
+        private DataTable GetBoschData(string database, string[] arrCMID, string startDate, string stopDate, string subCode, string decNo)
+        {
+            try
+            {
+                DataTable dtBosch = new DataTable();
+                int intTimeOut = 180;
+
+                if (database == "E")
+                {
+                    string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
+                    foreach (var cmid in arrCMID)
+                    {
+                        var parameters = new List<SqlParameter>
+                        {
+                            new SqlParameter("@CMID", cmid),
+                            new SqlParameter("@START_DATE", startDate.Replace("-", "")),
+                            new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
+                            new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
+                        };
+
+                        var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                        dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                    }
+                }
+                else
+                {
+                    string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
+                    foreach (var cmid in arrCMID)
+                    {
+                        var parameters = new List<SqlParameter>
+                        {
+                            new SqlParameter("@CMID", cmid),
+                            new SqlParameter("@START_DATE", startDate.Replace("-", "")),
+                            new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
+                            new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode)
+                        };
+
+                        
+                        var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                        dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                    }
+
+                    if (!string.IsNullOrEmpty(decNo))
+                    {
+                        if (decNo.EndsWith(",")) decNo = decNo.TrimEnd(',');
+
+                        sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC_ACROSS @CMID,@SUB_CODE,@DEC_NO";
+
+                        foreach (var cmid in arrCMID)
+                        {
+                            var parameters = new List<SqlParameter>
+                            {
+                                new SqlParameter("@CMID", cmid),
+                                new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
+                                new SqlParameter("@DEC_NO", string.IsNullOrEmpty(decNo) ? DBNull.Value : decNo)
+                            };
+
+                            using (var transaction = dbBoschImport.Database.BeginTransaction())
+                            {
+                                dbBoschImport.Database.SetCommandTimeout(intTimeOut);
+                                var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                                dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                            }
+                        }
+                    }
                 }
 
-                var byteArray = Encoding.ASCII.GetBytes(strBuilder.ToString());
-                var stream = new MemoryStream(byteArray);
-                return File(stream.ToArray(), "text/csv", $"{database}-{ cmid }-{ DateTime.Now.ToString("ddMMyy_HHmmss") }.csv");
+                return dtBosch;
+            }
+            catch (Exception ex)
+            {
+
+                throw new Exception(ex.ToString());
+            }
+        }
+
+        private string BuildCSVContent(DataTable dataTable)
+        {
+            var strBuilder = new StringBuilder();
+
+            // Header
+            var headers = string.Join("|", dataTable.Columns.Cast<DataColumn>().Select(col => col.ColumnName));
+            strBuilder.AppendLine(headers);
+
+            // Data rows
+            foreach (DataRow row in dataTable.Rows)
+            {
+                var rowData = string.Join("|", row.ItemArray.Select(item => item?.ToString() ?? string.Empty));
+                strBuilder.AppendLine(rowData);
             }
 
-            return RedirectToAction("NoFileProvided");
+            return strBuilder.ToString();
+        }
+
         }
     }
-}

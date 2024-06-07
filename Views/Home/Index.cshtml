@@ -18,7 +18,7 @@
                     <label class="form-check-label">Export</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="rdoDatabase" value="I"/>
+                    <input class="form-check-input" type="radio" name="rdoDatabase" value="I" />
                     <label class="form-check-label">Import</label>
                 </div>
             }
@@ -64,30 +64,32 @@
             else
             {
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" id="rdoALL" value="ALL" name="rdoCMID" checked ="@(cmid == "ALL")" />
+                    <input class="form-check-input" type="radio" id="rdoALL" value="ALL" name="rdoCMID" checked="@(cmid == "ALL")" />
                     <label class="form-check-label">All</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" id="rdoBOSCH" value="BOSCH" name="rdoCMID" checked ="@(cmid == "BOSCH")" />
+                    <input class="form-check-input" type="radio" id="rdoBOSCH" value="BOSCH" name="rdoCMID" checked="@(cmid == "BOSCH")" />
                     <label class="form-check-label">BOSCH</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" id="rdoRBTY" value="RBTY" name="rdoCMID" checked ="@(cmid == "RBTY")" />
+                    <input class="form-check-input" type="radio" id="rdoRBTY" value="RBTY" name="rdoCMID" checked="@(cmid == "RBTY")" />
                     <label class="form-check-label">RBTY</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" id="rdoROBOSCH" value="ROBOSCH" name="rdoCMID" checked ="@(cmid == "ROBOSCH")" />
+                    <input class="form-check-input" type="radio" id="rdoROBOSCH" value="ROBOSCH" name="rdoCMID" checked="@(cmid == "ROBOSCH")" />
                     <label class="form-check-label">ROBOSCH</label>
                 </div>
             }
         </div>
     </div>
+
     <div class="form-group row">
         <label class="col-sm-2 col-form-label">Sub Code :</label>
         <div class="col-sm-3">
             <input id="subCode" type="text" value="" class="form-control" maxlength="18" />
         </div>
     </div>
+
     <div class="form-group row">
         <label class="col-sm-2 col-form-label">Depart Date :</label>
         <div class="col-sm-3">
@@ -98,19 +100,22 @@
             <input type="date" class="form-control" id="decDateStop" />
         </div>
     </div>
+
     <div class="form-group row">
-        <div class="offset-2 col-sm-2">
-            <button id="getDataToCSV" class="btn btn-primary">Search</button>
+        <div class="col-md-2 offset-sm-2">
+            <button id="btnSearch" class="btn btn-primary">
+                <i id="imgSearch" class="fa-solid fa-magnifying-glass"></i> Search
+            </button>
+        </div>
+        <div class="col-md-3 offset-sm-2 text-right">
+            <button id="btnExport" type="button" class="btn btn-secondary enableExport" data-toggle="modal" data-target="#confirmationModal" disabled>
+                Export
+            </button>
         </div>
     </div>
+
     <div><p><strong>Note:</strong> type="date" is not supported in Internet Explorer 11 or prior Safari 14.1.</p></div>
-    <div class="form-group row view-import">
-        <div class="col-md">
-            <div class="d-flex justify-content-end">
-                <button id="ExportToCSV" class="btn btn-primary custom-button">Export</button>
-            </div>
-        </div>
-    </div>
+
     <div class="form-group row view-import">
         <table id="tblBosch" class="table">
             <thead class="thead-light">
@@ -122,22 +127,44 @@
                 </tr>
             </thead>
             <tbody>
-                @if (Model != null)
-                {
-                    @foreach (var item in Model)
-                    {
-                        <tr>
-                            <td>@item.DeclarationNum</td>
-                            <td>@item.LineNum</td>
-                            <td>@item.ProductNum</td>
-                            <td>
-                                <input type="text" value="@item.BusinessUnit" id="txtBusinessUnit" />
-                            </td>
-                        </tr>
-                    }
-                }
+
             </tbody>
         </table>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog" aria-labelledby="confirmationModalLabel" aria-hidden="true" data-backdrop="static">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirmation</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="excludeStatus"> ไม่แสดงข้อมูลที่ยังไม่ได้วันที่ 0409 (Zip file)
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableMemoCheckbox"> เลขที่ใบขนที่ต้องการเพิ่มเติม
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <textarea class="form-control" id="memo" rows="3" placeholder="A0020670503337,&#10;A0100670509389,&#10;A0130670503473" disabled></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirm">Confirm</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -162,35 +189,8 @@
                 "hideMethod": "fadeOut"
             }
 
-            var database = "@ViewBag.database";
-            var start_date = '@ViewBag.start_date';
-            var stop_date = '@ViewBag.stop_date';
-            var lock_control = "@ViewBag.lock_control";
-
-            if (start_date == "") {
-                $("#decDateStart").val(new Date().toISOString().slice(0, 10))
-            }
-            else {
-                $("#decDateStart").val(start_date)
-            }
-
-            if (stop_date == "") {
-                $("#decDateStop").val(new Date().toISOString().slice(0, 10))
-            }
-            else {
-                $("#decDateStop").val(stop_date)
-            }
-
-            if (database == "" || database == "E"){
-                $(".view-import").hide();
-            }
-            else {
-                $(".view-import").show();
-            }
-
-            if (lock_control == "Y") {
-                $("#getDataToCSV").prop("disabled", true);
-            }
+            $("#decDateStart").val(new Date().toISOString().slice(0, 10))
+            $("#decDateStop").val(new Date().toISOString().slice(0, 10))
         })
 
         function ValidateInputbox() {
@@ -203,74 +203,59 @@
             })
         }
 
-        $("#getDataToCSV").click(function () {
+        $("#btnSearch").click(function () {
             var database = $("input[name='rdoDatabase']:checked").val()
             var cmid = $("input[name='rdoCMID']:checked").val()
-            var start_date = $("#decDateStart").val()
-            var stop_date = $("#decDateStop").val()
+            var startDate = $("#decDateStart").val()
+            var stopDate = $("#decDateStop").val()
             var subCode = $("#subCode").val()
+
+            $(".enableExport").prop("disabled", true); // Disable the button
+            $("#imgSearch").removeClass("fa-solid fa-magnifying-glass").addClass("fa-solid fa-hourglass-start fa-spin");
 
             $.ajax({
                 type: "POST",
-                success: function (res) {
-                    window.location.href = '@Url.Action("getDataToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode
-                    toastr.success("Search completed!!!");
+                url: "@Url.Action("GetDataBusinessUnit", "Home")",
+                data: {
+                    database: database,
+                    cmid: cmid,
+                    startDate: startDate,
+                    stopDate: stopDate,
+                    subCode: subCode
                 },
-                error: function () {
-                    toastr.error("System Error!!!");
+                success: function (response) {
+                    $("#tblBosch tbody").empty();
+                    if (response.success) {
+                        if (response.message == "Not found data") {
+                            $(".enableExport").prop("disabled", true); // Disable the button
+                            toastr.success(response.message);
+                        } else {
+                            $.each(response.lstBosch, function (index, item) {
+                                var row = '<tr>' +
+                                    '<td>' + item.declarationNum + '</td>' +
+                                    '<td>' + item.lineNum + '</td>' +
+                                    '<td>' + item.productNum + '</td>' +
+                                    '<td><input type="text" value="' + item.businessUnit + '"></td>' +
+                                    '</tr>';
+                                $("#tblBosch tbody").append(row);
+                            });
+                            $(".enableExport").prop("disabled", false); // Enable the button
+                        }
+                        $("#imgSearch").removeClass("fa-solid fa-hourglass-start fa-spin").addClass("fa-solid fa-magnifying-glass");
+                        toastr.success(response.message);
+                    } else {
+                        toastr.success(response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error calling action:', error);
                 }
-            });
-            //window.location.href = '@Url.Action("getDataToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode
+            });          
         })
 
-        $("#ExportToCSV").click(function () {
-            ValidateInputbox();
-            if (validate == true) {
-                var boschs = new Array();
-                var keyValueObject = {};
-
-                $("#tblBosch tbody tr").each(function () {
-                    var row = $(this);
-                    var bosch = {};
-
-                    
-
-                    bosch.ProductNum = row.find("td").eq(2).html();
-                    if (jQuery.inArray(row.find("td").eq(2).text() + '|' + row.find("td:eq(3) input").val(), boschs) != -1) {
-                        //Nothing
-                    }
-                    else {
-                        boschs.push(row.find("td").eq(2).text() + '|' + row.find("td:eq(3) input").val());
-                        keyValueObject[row.find("td").eq(2).text()] = row.find("td:eq(3) input").val();
-                    }
-                })
-
-                console.log(keyValueObject);
-
-                var database = $("input[name='rdoDatabase']:checked").val();
-                var cmid = $("input[name='rdoCMID']:checked").val();
-                var start_date = $("#decDateStart").val();
-                var stop_date = $("#decDateStop").val();
-                var subCode = $("#subCode").val();
-
-                let encodedParam = encodeURIComponent(boschs);
-
-                $.ajax({
-                    type: "GET",
-                    success: function (res) {
-                        window.location.href = '@Url.Action("ExportToCSV", "Home")?database=' + database + '&cmid=' + cmid + '&start_date=' + start_date + '&stop_date=' + stop_date + '&subCode=' + subCode + '&boschs=' + JSON.stringify(encodedParam)
-                        toastr.success("Export completed!!!");
-                    },
-                    error: function () {
-                        toastr.error("System Error!!!");
-                    }
-                });
-            }
-        })
 
         $("input[type=radio][name=rdoDatabase]").on("change", function () {
-            $("#getDataToCSV").prop("disabled", false);
-            $("#ExportToCSV").prop("disabled", true);
+            $(".enableExport").prop("disabled", true); // Disable the button
             $("#tblBosch").find("tbody tr").remove();
             var database = $(this).val();
             switch (database) {
@@ -284,21 +269,104 @@
         })
 
         $("input[type=radio][name=rdoCMID]").on("change", function () {
-            $("#getDataToCSV").prop("disabled", false);
-            $("#ExportToCSV").prop("disabled", true);
+            $(".enableExport").prop("disabled", true); // Disable the button
             $("#tblBosch").find("tbody tr").remove();
         })
 
         $("input[type=date]").on("change", function () {
-            $("#getDataToCSV").prop("disabled", false);
-            $("#ExportToCSV").prop("disabled", true);
+            $(".enableExport").prop("disabled", true); // Disable the button
             $("#tblBosch").find("tbody tr").remove();
         })
+
+        $("#enableMemoCheckbox").on("change", function () {
+            if ($(this).is(":checked")) {
+                $("#memo").prop("disabled", false);
+            } else {
+                $("#memo").prop("disabled", true);
+            }
+            $("#memo").val();
+        });
+
+        function extractBoschData() {
+            const boschs = new Set(); // Using Set to avoid duplicate entries
+
+            $("#tblBosch tbody tr").each(function () {
+                const $row = $(this);
+                const productNum = $row.find("td").eq(2).text();
+                const inputVal = $row.find("td:eq(3) input").val();
+                const boschKey = `${productNum}|${inputVal}`;
+
+                if (!boschs.has(boschKey)) {
+                    boschs.add(boschKey);
+                }
+            });
+
+            return { boschs: Array.from(boschs) };
+        }
+
+        function collectRequestParams() {
+            const database = $("input[name='rdoDatabase']:checked").val();
+            const cmid = $("input[name='rdoCMID']:checked").val();
+            const startDate = $("#decDateStart").val();
+            const stopDate = $("#decDateStop").val();
+            const subCode = $("#subCode").val();
+            const excludeStatus = $("#excludeStatus").prop("checked");
+
+            return { database, cmid, startDate, stopDate, subCode, excludeStatus};
+        }
+
+        function triggerExportRequest(boschData, requestParams, decNo) {
+            const encodedBoschs = encodeURIComponent(JSON.stringify(boschData.boschs));
+            const downloadUrl = `@Url.Action("ExportToCSV", "Home")?` +
+                                            `database=${requestParams.database}` +
+                                            `&cmid=${requestParams.cmid}` +
+                                            `&startDate=${requestParams.startDate}` +
+                                            `&stopDate=${requestParams.stopDate}` +
+                                            `&subCode=${requestParams.subCode}` +
+                                            `&boschs=${encodedBoschs}` +
+                                            `&excludeStatus=${requestParams.excludeStatus}` +
+                                            `&decNo=${decNo}`;
+
+            $.ajax({
+                type: "GET",
+                success: function (res) {
+                    window.location.href = downloadUrl
+                    toastr.success("Export completed!!!");
+                    $("#confirmationModal").modal('hide');
+                    $("#excludeStatus").prop("checked",false);
+                },
+                error: function () {
+                    toastr.error("System Error!!!");
+                }
+            });
+        }
+
+        $("#btnConfirm").click(function () {
+            if (ValidateInputbox()) {
+                toastr.error("Validation failed.");
+                ("#btnConfirm").prop("disabled", false);
+                return;
+            };
+
+            const decNo = $("#memo").val();
+            const boschData = extractBoschData();
+            const requestParams = collectRequestParams();
+            triggerExportRequest(boschData, requestParams, decNo);
+        })
+
+        $("#btnExport").click(function () {
+            $("#enableMemoCheckbox").prop("checked", false);
+            $("#memo").prop("disabled", true);
+            $("#memo").val("");
+
+            const database = $("input[name='rdoDatabase']:checked").val();
+            if (database == "I") {
+                $("#excludeStatus").prop("disabled", false);
+                $("#enableMemoCheckbox").prop("disabled", false);
+            } else {
+                $("#excludeStatus").prop("disabled", true);
+                $("#enableMemoCheckbox").prop("disabled", true);
+            }
+        });
     </script>
 }
-
-<style>
-/*    .custom-button{
-        width:105px !important;
-    }*/
-</style>
