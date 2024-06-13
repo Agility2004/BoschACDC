@@ -1,14 +1,19 @@
 ﻿using BoschACDC.Class;
 using BoschACDC.Data;
 using BoschACDC.Models;
+using CsvHelper;
+using CsvHelper.Configuration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -66,6 +71,121 @@ namespace BoschACDC.Controllers
         }
         #endregion
 
+        public DataTable ConvertCsvToDataTable(IFormFile csvFile)
+        {
+            DataTable dataTable = new DataTable();
+            List<BoschModel> lstBoschs = new List<BoschModel>();
+
+            using (var stream = csvFile.OpenReadStream())
+            using (var reader = new StreamReader(stream))
+            {
+                bool headersRead = false;
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine();
+                    var values = line.Split('|');
+
+                    if (!headersRead)
+                    {
+                        foreach (var header in values)
+                        {
+                            dataTable.Columns.Add(header);
+                        }
+                        headersRead = true;
+                    }
+                    else
+                    {
+                        if (values.Length != dataTable.Columns.Count)
+                        {
+                            continue;
+                        }
+
+                        var row = dataTable.NewRow();
+                        for (int i = 0; i < values.Length; i++)
+                        {
+                            row[i] = values[i];
+                        }
+                        dataTable.Rows.Add(row);
+                    }
+                }
+            }
+
+            return dataTable;
+        }
+
+        private DataTable ConvertExcelToDataTable(IFormFile file)
+        {
+            DataTable dtResult = new DataTable();
+
+            if (file != null)
+            {
+                using (var stream = file.OpenReadStream())
+                {
+                    ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.Commercial;
+                    ExcelPackage package = new ExcelPackage();
+                    package.Load(stream);
+                    if (package.Workbook.Worksheets.Count > 0)
+                    {
+                        var hasHeader = true;
+                        byte intStartRow = 1;
+                        using (ExcelWorksheet workSheet = package.Workbook.Worksheets.First())
+                        {
+                            foreach (var firstRowCell in workSheet.Cells[1, 1, 1, workSheet.Dimension.End.Column])
+                            {
+                                if (string.IsNullOrEmpty(firstRowCell.Text.Trim()))
+                                {
+                                    intStartRow = 2;
+                                    continue;
+                                }
+                            }
+
+                            foreach (var firstRowCell in workSheet.Cells[intStartRow, 1, 1, workSheet.Dimension.End.Column])
+                            {
+                                dtResult.Columns.Add(hasHeader ? firstRowCell.Text : $"Column {firstRowCell.Start.Column}");
+                            }
+
+                            ++intStartRow;
+                            for (int rowNum = intStartRow; rowNum <= workSheet.Dimension.End.Row; rowNum++)
+                            {
+                                var wsRow = workSheet.Cells[rowNum, 1, rowNum, workSheet.Dimension.End.Column];
+                                DataRow row = dtResult.Rows.Add();
+                                foreach (var cell in wsRow) row[cell.Start.Column - 1] = cell.Text;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return dtResult;
+        }
+
+        private DataTable DistinctProductCode(DataTable dtResult)
+        {
+            DataTable dtDistinct = new DataTable();
+            dtDistinct = dtResult.DefaultView.ToTable(true, "ProductNum", "BusinessUnit");
+            return dtDistinct;
+        }
+
+        private List<CompareModel> CompareProductCode(DataTable dtExcel, DataTable dtCsv)
+        {
+            List<CompareModel> lstCompare = new List<CompareModel>();
+
+            foreach (DataRow drExcel in dtExcel.Rows)
+            {
+                string strProductNum = drExcel["ProductNum"].ToString();
+                string strBusinessUnit = drExcel["BusinessUnit"].ToString();
+                DataRow[] drCompare = dtCsv.Select("ProductNum = '" + strProductNum + "' AND BusinessUnit = '" + drExcel["BusinessUnit"].ToString() + "'");
+                if (drCompare.Length == 0)
+                {
+                    CompareModel compare = new CompareModel();
+                    compare.ProductNum = strProductNum;
+                    compare.BusinessUnit = strBusinessUnit;
+                    lstCompare.Add(compare);
+                }
+            }
+
+            return lstCompare;
+        }
 
         public HomeController(BoschDbExportContext _dbBoschExport, BoschDbImportContext _dbBoschImport)
         {
@@ -147,7 +267,7 @@ namespace BoschACDC.Controllers
         [HttpPost]
         public JsonResult UpdateBU(List<string> lstBU)
         {
-            string sql = "EXEC USP_UPDATE_DATA_BOSCH_ADCD @PRODUCT_CODE, @BUSINESS_UNIT";
+            string sql = "EXEC USP_UPDATE_DATA_BOSCH_ACDC @PRODUCT_CODE, @BUSINESS_UNIT";
 
             foreach (var item in lstBU)
             {
@@ -251,7 +371,7 @@ namespace BoschACDC.Controllers
                             new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode)
                         };
 
-                        
+
                         var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
                         dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
                     }
@@ -307,6 +427,29 @@ namespace BoschACDC.Controllers
 
             return strBuilder.ToString();
         }
+    
+        public IActionResult UploadExcelFile()
+        {
+            return View();
+        }
 
+        [HttpPost]
+        public ActionResult Upload(IFormFile excelFile, IFormFile csvFile)
+        {
+            if (excelFile != null && excelFile.Length > 0 && csvFile != null && csvFile.Length > 0)
+            {
+                DataTable dtExcel = ConvertExcelToDataTable(excelFile);
+                DataTable dtCsv = ConvertCsvToDataTable(csvFile);
+                DataTable dtExcelDistinct = DistinctProductCode(dtExcel);
+                DataTable dtCsvDistinct = DistinctProductCode(dtCsv);
+                List<CompareModel> lstCompare = CompareProductCode(dtExcelDistinct, dtCsvDistinct);
+
+                if (lstCompare.Count == 0) return Json(new { success = true, message = "Not found data" });
+
+                return Json(new { success = true, message = "Found data has changed", lstCompare = lstCompare });
+            }
+
+            return Json(new { success = true, message = "Found data has changed" });
         }
     }
+}

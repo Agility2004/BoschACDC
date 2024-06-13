@@ -1,0 +1,147 @@
+﻿@{ ViewBag.Title = "Update BU by Excel file"; }
+
+<div class="container">
+    <h2 class="mt-5">Update BU by Excel file</h2>
+
+    <div class="container">
+        <div class="form-group row">
+            <form id="formUpload" method="post" enctype="multipart/form-data" class="col-12">
+                <div class="form-group">
+                    <label for="excelFile">Upload Excel file</label>
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+                        <label class="custom-file-label" for="excelFile">Choose Excel file</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="csvFile">Upload CSV File:</label>
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="csvFile" name="csvFile" accept=".csv" required />
+                        <label class="custom-file-label" for="csvFile">Choose CSV file</label>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-6">
+                        <button id="btnCheck" type="submit" class="btn btn-primary"><i id="imgCheck" class="fa-solid fa-check"></i> Check</button>
+                    </div>
+                    <div class="col-6 text-right">
+                        <button id="btnUpdate" type="button" class="btn btn-secondary" disabled><i id="imgUpdate" class="fa-solid fa-arrows-rotate"></i> Update</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <table id="tblProduct" class="table">
+            <thead class="thead-light text-center">
+                <tr>
+                    <th scope="col">No</th>
+                    <th scope="col">ProductNum</th>
+                    <th scope="col">BusinessUnit</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section scripts{ 
+    <script>
+        $().ready(function () {
+            toastr.options = {
+                "positionClass": "toast-bottom-right",
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "5000",
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut"
+            }
+        });
+
+        function extractBUData() {
+            const lstBU = new Set(); // Using Set to avoid duplicate entries
+
+            $("#tblProduct tbody tr").each(function () {
+                const $row = $(this);
+                const productNum = $row.find("td").eq(1).text();
+                const bu = $row.find("td").eq(2).text();
+                const buKey = `${productNum}|${bu}`;
+
+                if (!lstBU.has(buKey)) {
+                    lstBU.add(buKey);
+                }
+            });
+
+            return { lstBU: Array.from(lstBU) };
+        }
+
+        function triggerExportRequest(buData) {
+            const Url = "@Url.Action("UpdateBU", "Home")"
+
+            $.post(Url, {
+                lstBU: buData.lstBU }).done(function (res) {
+                    toastr.success("Updated Completed!!!")
+                    $("#imgUpdate").removeClass("fa-solid fa-arrows-rotate fa-spin").addClass("fa-solid fa-arrows-rotate");
+            });
+        }
+
+        $(".custom-file-input").change(function (e) {
+            var inputFile = e.currentTarget;
+            $(inputFile).parent()
+                .find(".custom-file-label")
+                .html(inputFile.files[0].name)
+            $("#btnUpdate").prop("disabled", true);
+            $("#tblProduct tbody").empty();
+        });
+
+        $("#formUpload").submit(function (event) {
+            event.preventDefault();
+            var formData = new FormData($(this)[0]);
+            $.ajax({
+                url: '@Url.Action("Upload", "Home")',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    $("#tblProduct tbody").empty();
+                    if (response.success) {
+                        $.each(response.lstCompare, function (index, item) {
+                            var row = '<tr>' +
+                                '<td>' + (index + 1) + '</td>' +
+                                '<td>' + item.productNum + '</td>' +
+                                '<td>' + item.businessUnit + '</td>' +
+                                '</tr>';
+                            $("#tblProduct tbody").append(row);
+                        });
+                        toastr.success(response.message);
+                        $("#btnUpdate").prop("disabled", false);
+                        $("#imgCheck").removeClass("fa-solid fa-check fa-beat").addClass("fa-solid fa-check");
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error(xhr.responseText);
+                    $("#imgCheck").removeClass("fa-solid fa-check fa-beat").addClass("fa-solid fa-check");
+                }
+            });
+        });
+
+        $("#btnUpdate").click(function () {
+            const buData = extractBUData();
+            triggerExportRequest(buData);
+        });
+
+        $("#btnCheck").click(function () {
+            $("#imgCheck").removeClass("fa-solid fa-check").addClass("fa-solid fa-check fa-beat");
+        });
+
+        $("#btnUpdate").click(function () {
+            $("#imgUpdate").removeClass("fa-solid fa-arrows-rotate").addClass("fa-solid fa-arrows-rotate fa-spin");
+        });
+    </script>
+}
