@@ -3,7 +3,7 @@
 }
 
 <div class="container-fluid">
-    @using (Html.BeginForm("ExportToExcel", "Billing", FormMethod.Get))
+    @using (Html.BeginForm("ExportToExcel", "Billing", FormMethod.Get, new { id = "billingForm" }))
     {
         <div class="form-group row">
             <label class="col-sm-2 col-form-label">Billing Date :</label>
@@ -15,9 +15,28 @@
                 <input type="date" class="form-control" id="decDateStop" name="stopDate" />
             </div>
         </div>
+
+        <div class="form-group row">
+            <label class="col-sm-2 col-form-label"></label>
+            <div class="col-sm-6">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="templateOption" id="option1" value="oldTemplate" checked>
+                    <label class="form-check-label" for="option1">
+                        Old Template
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="templateOption" id="option2" value="newTemplate">
+                    <label class="form-check-label" for="option2">
+                        New Template
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <div class="form-group row">
             <div class="offset-8">
-                <button class="btn btn-primary" type="submit">Export</button>
+                <button class="btn btn-primary" type="submit" id="submitButton"><i class="fa-solid fa-download" id="submitIcon"></i> Export</button>
             </div>
         </div>
 
@@ -31,6 +50,48 @@
             $("#decDateStart").val(new Date().toISOString().slice(0, 10))
             $("#decDateStop").val(new Date().toISOString().slice(0, 10))
 
+        });
+
+        $("#billingForm").on("submit", function () {
+            event.preventDefault(); // Prevent default form submission
+
+            var submitButton = $("#submitButton");
+            var submitIcon = $("#submitIcon");
+            submitIcon.removeClass("fa-download").addClass("fa-spinner fa-spin");
+            submitButton.prop('disabled', true);
+
+            var form = $(this);
+            var url = form.attr('action');
+            var data = form.serialize();          
+
+            $.ajax({
+                type: "GET",
+                url: url,
+                data: data,
+                xhrFields: {
+                    responseType: 'blob' // Important for handling binary data
+                },
+                success: function (response, status, xhr) {
+                    // Create a link element, use it to download the file
+                    var disposition = xhr.getResponseHeader('Content-Disposition');
+                    var filename = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)[1];
+                    var a = document.createElement('a');
+                    var url = window.URL.createObjectURL(response);
+                    a.href = url;
+                    a.download = filename;
+                    document.body.append(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    submitButton.prop('disabled', false);
+                    submitIcon.removeClass("fa-spinner fa-spin").addClass("fa-download");
+                },
+                error: function () {
+                    alert("There was an error exporting the file.");
+                    submitButton.prop('disabled', false);
+                    submitIcon.removeClass("fa-spinner fa-spin").addClass("fa-download");
+                }
+            });
         });
 
         $('.navbar-nav .nav-link').click(function () {
