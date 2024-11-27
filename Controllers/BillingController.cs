@@ -146,8 +146,8 @@ namespace BoschACDC.Controllers
                         sheet.Cells[$"D{intRow.ToString()}"].Value = drRow["AwbOrBlNo"].ToString().Trim();
                         sheet.Cells[$"E{intRow.ToString()}"].Value = drRow["JobNo"].ToString().Trim();
                         sheet.Cells[$"F{intRow.ToString()}"].Value = drRow["Etd"].ToString().Trim();
-                        sheet.Cells[$"G{intRow.ToString()}"].Value = string.Empty;
-                        sheet.Cells[$"H{intRow.ToString()}"].Value = drRow["Eta"].ToString().Trim();
+                        sheet.Cells[$"G{intRow.ToString()}"].Value = drRow["Eta"].ToString().Trim();
+                        sheet.Cells[$"H{intRow.ToString()}"].Value = string.Empty;
                         sheet.Cells[$"I{intRow.ToString()}"].Value = string.Empty;
                         sheet.Cells[$"J{intRow.ToString()}"].Value = drRow["ServiceType"].ToString().Trim();
                         sheet.Cells[$"K{intRow.ToString()}"].Value = drRow["Cost_type"].ToString().Trim();
@@ -208,7 +208,7 @@ namespace BoschACDC.Controllers
                         sheet2.Cells[$"F{intRow.ToString()}"].Value = drRow["Business_Case"].ToString().Trim();
                         sheet2.Cells[$"G{intRow.ToString()}"].Value = drRow["Trasport_Mode"].ToString().Trim();
                         sheet2.Cells[$"H{intRow.ToString()}"].Value = drRow["AwbOrBlNo"].ToString().Trim();
-                        sheet2.Cells[$"E{intRow.ToString()}"].Value = drRow["Remark_position"].ToString().Trim();
+                        sheet2.Cells[$"I{intRow.ToString()}"].Value = drRow["Remark_position"].ToString().Trim();
                         ++intRow;
                     }
 
