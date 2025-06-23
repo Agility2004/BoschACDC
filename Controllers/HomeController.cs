@@ -222,7 +222,7 @@ namespace BoschACDC.Controllers
         [HttpPost]
         public ActionResult GetDataBusinessUnit(string database, string cmid, string startDate, string stopDate, string subCode)
         {
-            string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH" } : arrCMID = new string[] { cmid });
+            string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH", "REXROTH" } : arrCMID = new string[] { cmid });
             DataTable dtBOSCH = GetBoschData(database, arrCMID, startDate, stopDate, subCode, "");
 
             if (dtBOSCH.Rows.Count == 0) return Json(new { success = true, message = "Not found data" });
@@ -291,7 +291,7 @@ namespace BoschACDC.Controllers
                 var decodedBoschs = Uri.UnescapeDataString(boschs);
                 var lstBoschs = JsonConvert.DeserializeObject<List<string>>(decodedBoschs);
 
-                string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH" } : arrCMID = new string[] { cmid });
+                string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH", "REXROTH" } : arrCMID = new string[] { cmid });
                 string exclude = (excludeStatus ? "Y" : "N");
 
                 DataTable dtBOSCH = GetBoschData(database, arrCMID, startDate, stopDate, subCode, decNo);
