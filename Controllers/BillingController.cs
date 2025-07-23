@@ -208,7 +208,7 @@ namespace BoschACDC.Controllers
             try
             {
                 DataTable dtSheet1 = dsResult.Tables[0];
-                //DataTable dtSheet2 = dsResult.Tables[1];
+                DataTable dtSheet2 = dsResult.Tables[1];
 
                 string strTemplateReimbursement = config.GetValue<string>("AppSettings:PathNewTemplateReimbursement");
 
@@ -370,6 +370,34 @@ namespace BoschACDC.Controllers
                         ++intRow;
                     }
 
+                    sheet = package.Workbook.Worksheets["Biz Bo Pre Check Form"];
+                    intRow = 2;
+
+                    foreach (DataRow drRow in dtSheet2.Rows)
+                    {
+                        sheet.Cells[$"A{intRow.ToString()}"].Value = drRow["Entity"].ToString().Trim();
+                        sheet.Cells[$"B{intRow.ToString()}"].Value = drRow["LSP"].ToString().Trim();
+                        sheet.Cells[$"C{intRow.ToString()}"].Value = drRow["Billing period"].ToString().Trim();
+                        sheet.Cells[$"D{intRow.ToString()}"].Value = drRow["Billing date"].ToString().Trim();
+                        sheet.Cells[$"E{intRow.ToString()}"].Value = drRow["DeclarationNo"].ToString().Trim();
+                        sheet.Cells[$"F{intRow.ToString()}"].Value = drRow["AwbOrBlNo"].ToString().Trim();
+                        sheet.Cells[$"G{intRow.ToString()}"].Value = drRow["Back to back invoice number"].ToString().Trim();
+                        sheet.Cells[$"H{intRow.ToString()}"].Value = drRow["Invoice date"].ToString().Trim();
+                        sheet.Cells[$"I{intRow.ToString()}"].Value = drRow["LocalAmt"];
+                        sheet.Cells[$"J{intRow.ToString()}"].Value = drRow["Tax amount"];
+                        sheet.Cells[$"K{intRow.ToString()}"].Value = drRow["Total amount"];
+                        sheet.Cells[$"L{intRow.ToString()}"].Value = drRow["Description"].ToString().Trim();
+                        sheet.Cells[$"M{intRow.ToString()}"].Value = drRow["Special charge"].ToString().Trim();
+                        sheet.Cells[$"N{intRow.ToString()}"].Value = drRow["GB"].ToString().Trim();
+                        sheet.Cells[$"O{intRow.ToString()}"].Value = drRow["CommodityDescription"].ToString().Trim();
+                        sheet.Cells[$"P{intRow.ToString()}"].Value = drRow["Rate"].ToString().Trim();
+                        sheet.Cells[$"Q{intRow.ToString()}"].Value = drRow["UOM"].ToString().Trim();
+                        sheet.Cells[$"R{intRow.ToString()}"].Value = drRow["Tax rate"].ToString().Trim();
+                        sheet.Cells[$"S{intRow.ToString()}"].Value = drRow["Currency"].ToString().Trim();
+                        sheet.Cells[$"T{intRow.ToString()}"].Value = drRow["Remark"].ToString().Trim();
+                        ++intRow;
+                    }
+
                     package.SaveAs(stream);
                     stream.Position = 0;
                 }
@@ -401,8 +429,8 @@ namespace BoschACDC.Controllers
             else
             {
                 DataSet dsResult = GetDataReimbursement(startDate, stopDate, "_REX_BILL_LCC_RBTH_NEW");
-                //if (dsResult.Tables.Count == 2)
-                if (dsResult.Tables.Count == 1)
+                if (dsResult.Tables.Count == 2)
+                //if (dsResult.Tables.Count == 1)
                 {
                     stream = CreateExcelFileNewTemplate(dsResult);
                     return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelName);
