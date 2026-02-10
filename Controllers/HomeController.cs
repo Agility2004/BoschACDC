@@ -291,7 +291,8 @@ namespace BoschACDC.Controllers
                 var decodedBoschs = Uri.UnescapeDataString(boschs);
                 var lstBoschs = JsonConvert.DeserializeObject<List<string>>(decodedBoschs);
 
-                string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH", "REXROTH" } : arrCMID = new string[] { cmid });
+                //string[] arrCMID = (cmid == "ALL" ? new string[] { "BOSCH", "RBTY", "ROBOSCH", "REXROTH" } : arrCMID = new string[] { cmid });
+                string[] arrCMID = (cmid == "ALL" ? new string[] { "BR", "ROBOSCH", "REXROTH" } : arrCMID = new string[] { cmid });
                 string exclude = (excludeStatus ? "Y" : "N");
 
                 DataTable dtBOSCH = GetBoschData(database, arrCMID, startDate, stopDate, subCode, decNo);
@@ -346,16 +347,33 @@ namespace BoschACDC.Controllers
                     string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
                     foreach (var cmid in arrCMID)
                     {
-                        var parameters = new List<SqlParameter>
-                        {
-                            new SqlParameter("@CMID", cmid),
-                            new SqlParameter("@START_DATE", startDate.Replace("-", "")),
-                            new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
-                            new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
-                        };
+                        var cmidList = cmid == "BR"
+                            ? new[] { "BOSCH", "RBTY" }
+                            : new[] { cmid };
 
-                        var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
-                        dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                        foreach (var realCMID in cmidList)
+                        {
+                            var parameters = new List<SqlParameter>
+                            {
+                                new SqlParameter("@CMID", realCMID),
+                                new SqlParameter("@START_DATE", startDate.Replace("-", "")),
+                                new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
+                                new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
+                            };
+
+                            var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                            dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                        }
+                        //var parameters = new List<SqlParameter>
+                        //{
+                        //    new SqlParameter("@CMID", cmid),
+                        //    new SqlParameter("@START_DATE", startDate.Replace("-", "")),
+                        //    new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
+                        //    new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
+                        //};
+
+                        //var data = dbBoschExport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                        //dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
                     }
                 }
                 else
@@ -363,17 +381,35 @@ namespace BoschACDC.Controllers
                     string sql = "EXEC USP_SELECT_DATA_BOSCH_ACDC @CMID,@START_DATE,@STOP_DATE,@SUB_CODE";
                     foreach (var cmid in arrCMID)
                     {
-                        var parameters = new List<SqlParameter>
+                        var cmidList = cmid == "BR"
+                            ? new[] { "BOSCH", "RBTY" }
+                            : new[] { cmid };
+
+                        foreach (var realCMID in cmidList)
                         {
-                            new SqlParameter("@CMID", cmid),
-                            new SqlParameter("@START_DATE", startDate.Replace("-", "")),
-                            new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
-                            new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode)
-                        };
+                            var parameters = new List<SqlParameter>
+                            {
+                                new SqlParameter("@CMID", realCMID),
+                                new SqlParameter("@START_DATE", startDate.Replace("-", "")),
+                                new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
+                                new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode)
+                            };
+
+                            var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                            dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                        }
+
+                        //var parameters = new List<SqlParameter>
+                        //{
+                        //    new SqlParameter("@CMID", cmid),
+                        //    new SqlParameter("@START_DATE", startDate.Replace("-", "")),
+                        //    new SqlParameter("@STOP_DATE", stopDate.Replace("-", "")),
+                        //    new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode)
+                        //};
 
 
-                        var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
-                        dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                        //var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                        //dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
                     }
 
                     if (!string.IsNullOrEmpty(decNo))
@@ -384,19 +420,40 @@ namespace BoschACDC.Controllers
 
                         foreach (var cmid in arrCMID)
                         {
-                            var parameters = new List<SqlParameter>
-                            {
-                                new SqlParameter("@CMID", cmid),
-                                new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
-                                new SqlParameter("@DEC_NO", string.IsNullOrEmpty(decNo) ? DBNull.Value : decNo)
-                            };
+                            var cmidList = cmid == "BR"
+                                ? new[] { "BOSCH", "RBTY" }
+                                : new[] { cmid };
 
-                            using (var transaction = dbBoschImport.Database.BeginTransaction())
+                            foreach (var realCMID in cmidList)
                             {
-                                dbBoschImport.Database.SetCommandTimeout(intTimeOut);
-                                var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
-                                dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                                var parameters = new List<SqlParameter>
+                                {
+                                    new SqlParameter("@CMID", realCMID),
+                                    new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
+                                    new SqlParameter("@DEC_NO", string.IsNullOrEmpty(decNo) ? DBNull.Value : decNo)
+                                };
+
+                                using (var transaction = dbBoschImport.Database.BeginTransaction())
+                                {
+                                    dbBoschImport.Database.SetCommandTimeout(intTimeOut);
+                                    var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                                    dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                                }
                             }
+
+                            //var parameters = new List<SqlParameter>
+                            //{
+                            //    new SqlParameter("@CMID", cmid),
+                            //    new SqlParameter("@SUB_CODE", string.IsNullOrEmpty(subCode) ? DBNull.Value : subCode),
+                            //    new SqlParameter("@DEC_NO", string.IsNullOrEmpty(decNo) ? DBNull.Value : decNo)
+                            //};
+
+                            //using (var transaction = dbBoschImport.Database.BeginTransaction())
+                            //{
+                            //    dbBoschImport.Database.SetCommandTimeout(intTimeOut);
+                            //    var data = dbBoschImport.Boschs.FromSqlRaw<BoschModel>(sql, parameters.ToArray()).ToList();
+                            //    dtBosch.Merge(ListtoDataTableConverter.ToDataTable(data));
+                            //}
                         }
                     }
                 }
