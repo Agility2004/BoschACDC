@@ -31,14 +31,18 @@ namespace BoschACDC.Controllers
         {
             DataRow[] dr0409 = dtBOSCH.Select("DeliveryDate not is null");
             DataRow[] drNon0409 = dtBOSCH.Select("DeliveryDate is null");
-            DataTable dt0409 = dr0409.CopyToDataTable();
-            DataTable dtNon0409 = drNon0409.CopyToDataTable();
+            DataTable dt0409 = (dr0409.Length > 0) ? dr0409.CopyToDataTable() : null;
+            DataTable dtNon0409 = (drNon0409.Length > 0) ? drNon0409.CopyToDataTable() : null;
+            //DataTable dt0409 = dr0409.CopyToDataTable();
+            //DataTable dtNon0409 = drNon0409.CopyToDataTable();
 
             return (dt0409, dtNon0409);
         }
 
         private MemoryStream ConvertDataTableToMemoryStream(DataTable dataTable)
         {
+            if (dataTable == null) return null;
+
             var csvContent = BuildCSVContent(dataTable);
             var byteArray = Encoding.ASCII.GetBytes(csvContent);
             return new MemoryStream(byteArray);
@@ -46,6 +50,8 @@ namespace BoschACDC.Controllers
 
         private void AddEntryToArchive(ZipArchive archive, MemoryStream memoryStream, string database, string cmid, string suffix)
         {
+            if (memoryStream == null) return;
+
             string strSuffix = (suffix == string.Empty ? "" : suffix);
             string fileName = $"{database}-{cmid}-{DateTime.Now:ddMMyy_HHmmss}{strSuffix}.csv";
             var entry = archive.CreateEntry(fileName);
@@ -63,8 +69,10 @@ namespace BoschACDC.Controllers
                 AddEntryToArchive(archive, memoryStream0409, database, cmid, "");
                 AddEntryToArchive(archive, memoryStreamNon0409, database, cmid, "--Non0409");
             }
-            memoryStream0409.Seek(0, SeekOrigin.Begin);
-            memoryStreamNon0409.Seek(0, SeekOrigin.Begin);
+            //memoryStream0409.Seek(0, SeekOrigin.Begin);
+            //memoryStreamNon0409.Seek(0, SeekOrigin.Begin);
+            memoryStream0409?.Seek(0, SeekOrigin.Begin);
+            memoryStreamNon0409?.Seek(0, SeekOrigin.Begin);
             zipStream.Seek(0, SeekOrigin.Begin);
 
             return zipStream;
